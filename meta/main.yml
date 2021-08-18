@@ -1,0 +1,21 @@
+galaxy_info:
+  role_name: smmk.webhost
+  author: Lucas Wendel
+  description: Creating apache vhosts with Let's Encrypt SSL support and different backends. 
+
+  license: license (GPLv3)
+
+  min_ansible_version: 1.2
+
+  github_branch: main
+
+  galaxy_tags: 
+    - apache2
+    - letsencrypt
+    - vhost
+
+dependencies:
+  - smmk.acme_sh
+  - geerlingguy.apache
+  - geerlingguy.php
+  - geerlingguy.apache-php-fpm

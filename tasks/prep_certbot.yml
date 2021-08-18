@@ -1,0 +1,16 @@
+---
+- name: get all required SSL certificates
+  include_role:
+    name: geerlingguy.certbot
+  vars:
+    certbot_certs:
+    - email: "{{ certbot_email }}"
+      domains:
+        - "{{ item.name }}"
+    certbot_install_method: snap
+    certbot_auto_renew: true
+    certbot_auto_renew_hour: "3"
+    certbot_auto_renew_minute: "15"
+    certbot_create_if_missing: true
+    certbot_create_command: "{{ certbot_script }} certonly --agree-tos -n --webroot --webroot-path /var/www/ --email {{ cert_item.email }} -d {{ cert_item.domains | join(',') }}"
+    when: "{{ item.ssl }}" == True

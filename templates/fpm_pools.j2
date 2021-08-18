@@ -1,0 +1,15 @@
+- pool_name: www
+  pool_template: my-www.conf.j2
+  pool_listen: "/var/run/php5-fpm-www.sock"
+  pool_user: www-data
+  pool_group: www-data
+{% for pool in active_domains %}
+{% if pool.interpreter == "php-fpm" %}
+- pool_name: {{ pool.webuser }}
+  pool_template: my-www.conf.j2
+  pool_listen: "/var/run/php5-fpm-{{ pool.webuser}}.sock"
+  pool_user: {{ pool.webuser }}
+  pool_group: "www-data"
+
+{% endif %}
+{% endfor %}

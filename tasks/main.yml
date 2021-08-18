@@ -1,0 +1,112 @@
+---
+- name: create users
+  ansible.builtin.user:
+    name: "{{ webhost_item.webuser }}"
+    groups: "{{ webhost_item.groups | default('') }}"
+    home: "/var/www/{{ webhost_item.servername }}"
+    create_home: no
+  loop: "{{ active_domains }}"
+  loop_control:
+    loop_var: webhost_item 
+
+- name: create webroots
+  file:
+    state: directory
+    path: "/var/www/{{ webhost_item.servername }}"
+    owner: "{{ webhost_item.webuser }}"
+    group: "{{ webhost_item.webgroup }}"
+  loop: "{{ active_domains }}"
+  loop_control:
+    loop_var: webhost_item 
+
+- name: Get Apache2 running
+  include_role:
+    name: geerlingguy.apache
+  vars:
+    apache_remove_default_vhost: true
+    apache_create_vhosts: true
+    apache_vhosts_filename: "000-{{ inventory_hostname }}.conf"
+    apache_vhosts:
+      - servername: "{{ inventory_hostname }}"
+        documentroot: "/var/www/{{ inventory_hostname }}"
+        extra_parameters: |
+          ErrorLog /var/log/apache2/error.log
+          CustomLog /var/log/apache2/access.log combined
+
+          Alias /.well-known/acme-challenge/ "/var/www/{{ inventory_hostname }}/.well-known/acme-challenge/"
+          <Directory "/var/www/{{ inventory_hostname }}">
+              AllowOverride None
+              Options MultiViews Indexes SymLinksIfOwnerMatch IncludesNoExec
+              Require method GET POST OPTIONS
+          </Directory>
+  
+- name: Reload Apache2
+  service:
+    name: apache2
+    state: reloaded
+
+- name: get SSL Cert {{ webhost_item.servername }}
+  include_role:
+    name: smmk.acme_sh
+  vars:
+    acme_webroot_directory: "/var/www/{{ inventory_hostname }}/"
+    acme_home_directory: "/var/acme"
+    acme_certificates:
+      - {d: ["{{ webhost_item.servername }}"]}
+  loop: "{{ active_domains }}"
+  when: True == ssl_by_default or
+        True == item.ssl
+  loop_control:
+    loop_var: webhost_item 
+
+# ssl cert in /var/acme/.acme.sh/{{ webhost_item.servername }}/{{ webhost_item.servername }}.[suffix]
+- name: Get Apache2 running
+  include_role:
+    name: geerlingguy.apache
+  vars:
+    apache_remove_default_vhost: true
+    apache_create_vhosts: true
+    apache_vhosts_filename: "001-{{ webhost_item.servername }}.conf"
+    apache_vhosts:
+      - servername: "{{ webhost_item.servername }}"
+        documentroot: "/var/www/{{ webhost_item.servername }}"
+        extra_parameters: "{{ lookup('template', 'extra_parameters.j2') }}"
+    apache_vhosts_ssl:
+      - servername: "{{ webhost_item.servername }}"
+        certificate_file: "/var/acme/.acme.sh/{{webhost_item.servername}}/{{ webhost_item.servername}}.cer"
+        certificate_key_file: "/var/acme/.acme.sh/{{webhost_item.servername}}/{{webhost_item.servername}}.key"
+        certificate_chain_file: "/var/acme/.acme.sh/{{webhost_item.servername}}/fullchain.cer"
+        documentroot: "/var/www/{{ webhost_item.servername }}"
+        extra_parameters: "{{ lookup('template', 'extra_parameters_ssl.j2') }}"
+  loop: "{{ active_domains }}"
+  loop_control:
+    loop_var: webhost_item 
+  when: True == ssl_by_default or 
+        True == webhost_item.ssl
+
+- name: Get Apache2 running
+  include_role:
+    name: geerlingguy.apache
+  vars:
+    apache_remove_default_vhost: true
+    apache_create_vhosts: true
+    apache_vhosts_filename: "001-{{ webhost_item.servername }}.conf"
+    apache_vhosts:
+      - servername: "{{ webhost_item.servername }}"
+        documentroot: "/var/www/{{ webhost_item.servername }}"
+        extra_parameters: "{{ lookup('template', 'extra_parameters.j2') }}"
+  loop: "{{ active_domains }}"
+  loop_control:
+    loop_var: webhost_item 
+  when: False == ssl_by_default and
+        False == item.ssl
+
+- name: Setup Interpreter
+  include_tasks: "prep_{{ item.interpreter }}.yml"
+  loop: "{{ active_domains }}"
+
+
+- name: Reload Apache2
+  service:
+    name: apache2
+    state: reloaded

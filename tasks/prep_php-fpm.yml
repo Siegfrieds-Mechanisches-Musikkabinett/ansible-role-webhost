@@ -1,0 +1,30 @@
+
+- name: Get PHP running
+  include_role:
+    name: geerlingguy.php
+  vars:
+    php_enable_php_fpm: True
+    php_fpm_state: started
+    php_fpm_enabled_on_boot: true
+    php_fpm_pools: "{{ lookup('template', 'fpm_pools.j2') | from_yaml }}"
+
+- name: Get PHP-FPM running
+  include_role:
+    name: geerlingguy.apache-php-fpm
+
+
+- name: Setup Apache
+  lineinfile:
+    path: "/etc/apache2/sites-available/001-{{ webhost_item.servername }}.conf"
+    insertafter: "^<VirtualHost \\*\\:443>\n"
+    line: ProxyPassMatch ^/(.*\.php(/.*)?)$ "unix:/var/run/php5-fpm-{{ webhost_item.webuser}}.sock|fcgi://localhost/var/www/{{ webhost_item.servername }}"
+  loop: "{{ active_domains }}"
+  when: webhost_item.interpreter == "php-fpm"
+  loop_control:
+    loop_var: webhost_item 
+
+
+- name: Reload Apache2
+  service:
+    name: apache2
+    state: reloaded

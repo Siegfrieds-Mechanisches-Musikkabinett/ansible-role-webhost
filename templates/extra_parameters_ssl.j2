@@ -1,0 +1,9 @@
+ErrorLog /var/log/apache2/{{ webhost_item.servername }}_error.log
+CustomLog /var/log/apache2/{{ webhost_item.servername }}_access.log combined
+
+Alias /.well-known/acme-challenge/ "/var/www/{{ inventory_hostname }}/.well-known/acme-challenge/"
+<Directory "/var/www/{{ inventory_hostname }}/">
+   AllowOverride None
+   Options MultiViews Indexes SymLinksIfOwnerMatch IncludesNoExec
+   Require method GET POST OPTIONS
+</Directory>
