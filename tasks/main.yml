@@ -9,6 +9,18 @@
   loop_control:
     loop_var: webhost_item 
 
+- name: create webroots with mode
+  file:
+    state: directory
+    path: "/var/www/{{ webhost_item.servername }}"
+    owner: "{{ webhost_item.webuser }}"
+    group: "{{ webhost_item.webgroup }}"
+    mode: "{{ webhost_item.webroot_mode }}"
+  loop: "{{ active_domains }}"
+  loop_control:
+    loop_var: webhost_item 
+  when: webhost_item.webroot_mode is defined
+
 - name: create webroots
   file:
     state: directory
@@ -18,6 +30,7 @@
   loop: "{{ active_domains }}"
   loop_control:
     loop_var: webhost_item 
+  when: not webhost_item.webroot_mode is defined
 
 - name: Get Apache2 running
   include_role:
